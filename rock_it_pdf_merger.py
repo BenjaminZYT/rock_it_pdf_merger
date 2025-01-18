@@ -43,7 +43,7 @@ app.layout = html.Div([
     html.Div(id='download-link', style={'margin': '10px'}),
     html.P(
         "Created by Benjamin Zu Yao Teoh - Atlanta, GA - January 2025",
-        style={'fontSize': '5px', 'textAlign': 'center', 'marginTop': '20px'}
+        style={'fontSize': '7px', 'textAlign': 'center', 'marginTop': '20px'}
     )
 ])
 
