@@ -1,8 +1,10 @@
 import os
 import base64
+import tempfile
 import dash
 from dash import dcc, html, Input, Output, State
 import PyPDF2
+from flask import send_file
 
 # Initialize Dash app
 app = dash.Dash(__name__)
@@ -43,16 +45,18 @@ app.layout = html.Div([
 def merge_pdfs(pdfs):
     pdf_writer = PyPDF2.PdfWriter()
     for pdf in pdfs:
-        pdf_reader = PyPDF2.PdfReader(pdf)
-        for page in pdf_reader.pages:
-            pdf_writer.add_page(page)
+        with open(pdf, 'rb') as pdf_file:
+            pdf_reader = PyPDF2.PdfReader(pdf_file)
+            for page in pdf_reader.pages:
+                pdf_writer.add_page(page)
     
-    # Save merged PDF
+    # Save merged PDF to a temporary file
     output_filename = "merged_output.pdf"
-    with open(output_filename, "wb") as output_file:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf", mode='wb') as output_file:
         pdf_writer.write(output_file)
-    return output_filename
+        return output_file.name
 
+# Callback for merging PDFs
 @app.callback(
     Output('download-link', 'children'),
     Output('output-message', 'children'),
@@ -62,40 +66,46 @@ def merge_pdfs(pdfs):
 )
 def handle_merge(n_clicks, contents, filenames):
     if n_clicks > 0:
-        if not contents:
+        if not contents or not filenames:
             return "", html.Div("No files uploaded. Please upload PDF files.", style={'color': 'red'})
 
-        # Decode uploaded files and save locally
+        # Decode and save uploaded files
         uploaded_files = []
-        for content, filename in zip(contents, filenames):
-            content_type, content_string = content.split(',')
-            decoded = base64.b64decode(content_string)
-            with open(filename, 'wb') as file:
-                file.write(decoded)
-            uploaded_files.append(filename)
-
-        # Merge PDFs
         try:
-            output_filename = merge_pdfs(uploaded_files)
-            download_link = html.A(
+            temp_dir = tempfile.mkdtemp()  # Temporary directory for file operations
+            for content, filename in zip(contents, filenames):
+                content_type, content_string = content.split(',')
+                decoded = base64.b64decode(content_string)
+                temp_file_path = os.path.join(temp_dir, filename)
+                with open(temp_file_path, 'wb') as file:
+                    file.write(decoded)
+                uploaded_files.append(temp_file_path)
+
+            # Merge PDFs
+            output_path = merge_pdfs(uploaded_files)
+            return html.A(
                 'Download Merged PDF',
-                href=f'/download/{output_filename}',
+                href=f'/download/{output_path}',
                 target="_blank",
                 style={'color': 'blue'}
-            )
-            return download_link, html.Div("Merge successful!", style={'color': 'green'})
+            ), html.Div("Merge successful!", style={'color': 'green'})
         except Exception as e:
             return "", html.Div(f"Error during merging: {e}", style={'color': 'red'})
         finally:
             # Cleanup uploaded files
             for file in uploaded_files:
-                os.remove(file)
+                try:
+                    os.remove(file)
+                except OSError:
+                    pass
 
     return "", ""
 
+# Flask route for serving the merged file
 @app.server.route('/download/<path:filename>')
 def download_file(filename):
-    return dash.send_file(filename)
+    return send_file(filename, as_attachment=True)
 
+# Run server
 if __name__ == '__main__':
     app.run_server(debug=False)
