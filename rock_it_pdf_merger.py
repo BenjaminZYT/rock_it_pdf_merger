@@ -67,6 +67,7 @@ def merge_pdfs(pdfs, output_filename):
     Output('uploaded-files-list', 'children'),
     Output('download-link', 'children'),
     Output('output-message', 'children'),
+    Output('custom-filename', 'value'),
     Input('upload-data', 'contents'),
     Input('merge-button', 'n_clicks'),
     Input('reset-button', 'n_clicks'),
@@ -78,16 +79,16 @@ def handle_file_operations(contents, merge_clicks, reset_clicks, filenames, cust
     triggered_id = ctx.triggered_id
 
     if triggered_id == 'reset-button':
-        return "", "", ""
+        return "", "", "", ""
 
     if triggered_id == 'upload-data' and contents:
         uploaded_filenames = filenames
         uploaded_list = html.Ul([html.Li(name) for name in uploaded_filenames])
-        return uploaded_list, "", html.Div("Files uploaded successfully!", style={'color': 'green'})
+        return uploaded_list, "", html.Div("Files uploaded successfully!", style={'color': 'green'}), custom_filename
 
     if triggered_id == 'merge-button' and contents:
         if not contents or not filenames:
-            return "", "", html.Div("No files uploaded. Please upload PDF files.", style={'color': 'red'})
+            return "", "", html.Div("No files uploaded. Please upload PDF files.", style={'color': 'red'}), custom_filename
 
         uploaded_files = []
         try:
@@ -108,9 +109,9 @@ def handle_file_operations(contents, merge_clicks, reset_clicks, filenames, cust
                 href=f'/download/{output_filename}',
                 target="_blank",
                 style={'color': 'blue'}
-            ), html.Div("Merge successful!", style={'color': 'green'})
+            ), html.Div("Merge successful!", style={'color': 'green'}), ""
         except Exception as e:
-            return "", "", html.Div(f"Error during merging: {e}", style={'color': 'red'})
+            return "", "", html.Div(f"Error during merging: {e}", style={'color': 'red'}), custom_filename
         finally:
             for file in uploaded_files:
                 try:
@@ -118,7 +119,7 @@ def handle_file_operations(contents, merge_clicks, reset_clicks, filenames, cust
                 except OSError:
                     pass
 
-    return "", "", ""
+    return "", "", "", ""
 
 # Flask route for serving the merged file
 @app.server.route('/download/<filename>')
