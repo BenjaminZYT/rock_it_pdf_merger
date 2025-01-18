@@ -4,7 +4,7 @@ import tempfile
 import dash
 from dash import dcc, html, Input, Output, State
 import PyPDF2
-from flask import send_file
+from flask import send_from_directory
 
 # Initialize Dash app
 app = dash.Dash(__name__)
@@ -37,7 +37,7 @@ app.layout = html.Div([
     html.Div(id='download-link'),
     html.P(
         "Created by Benjamin Zu Yao Teoh - Atlanta, GA - January 2025",
-        style={'fontSize': '5px', 'textAlign': 'center', 'marginTop': '20px'}
+        style={'fontSize': '7px', 'textAlign': 'center', 'marginTop': '20px'}
     )
 ])
 
@@ -52,9 +52,10 @@ def merge_pdfs(pdfs):
     
     # Save merged PDF to a temporary file
     output_filename = "merged_output.pdf"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf", mode='wb') as output_file:
+    output_path = os.path.join(tempfile.gettempdir(), output_filename)
+    with open(output_path, 'wb') as output_file:
         pdf_writer.write(output_file)
-        return output_file.name
+    return output_filename
 
 # Callback for merging PDFs
 @app.callback(
@@ -82,10 +83,11 @@ def handle_merge(n_clicks, contents, filenames):
                 uploaded_files.append(temp_file_path)
 
             # Merge PDFs
-            output_path = merge_pdfs(uploaded_files)
+            output_filename = merge_pdfs(uploaded_files)
+            download_path = os.path.join(tempfile.gettempdir(), output_filename)
             return html.A(
                 'Download Merged PDF',
-                href=f'/download/{output_path}',
+                href=f'/download/{output_filename}',
                 target="_blank",
                 style={'color': 'blue'}
             ), html.Div("Merge successful!", style={'color': 'green'})
@@ -102,9 +104,10 @@ def handle_merge(n_clicks, contents, filenames):
     return "", ""
 
 # Flask route for serving the merged file
-@app.server.route('/download/<path:filename>')
+@app.server.route('/download/<filename>')
 def download_file(filename):
-    return send_file(filename, as_attachment=True)
+    temp_dir = tempfile.gettempdir()
+    return send_from_directory(directory=temp_dir, path=filename, as_attachment=True)
 
 # Run server
 if __name__ == '__main__':
