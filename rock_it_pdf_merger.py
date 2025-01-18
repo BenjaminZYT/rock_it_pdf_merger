@@ -32,7 +32,11 @@ app.layout = html.Div([
     ),
     html.Div(id='output-message'),
     html.Button('Merge PDFs', id='merge-button', n_clicks=0, style={'margin': '10px'}),
-    html.Div(id='download-link')
+    html.Div(id='download-link'),
+    html.P(
+        "Created by Benjamin Zu Yao Teoh - Atlanta, GA - January 2025",
+        style={'fontSize': '5px', 'textAlign': 'center', 'marginTop': '20px'}
+    )
 ])
 
 # Function to merge PDFs
